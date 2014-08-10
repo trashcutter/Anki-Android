@@ -89,6 +89,12 @@ public class ChartBuilder {
             case CARDS_TYPES:
                 stats.calculateCardsTypes(mType);
                 break;
+            case CARDS_REVIEW_COUNT:
+                stats.calculateCardsReviewCountHistogram(mType);
+                break;
+            case CARDS_RELEARN_COUNT:
+                stats.calculateCardsRelearnCountHistogram(mType);
+                break;
         }
         mCumulative = stats.getCumulative();
         mSeriesList = stats.getSeriesList();
@@ -198,12 +204,19 @@ public class ChartBuilder {
 
             PlotSheet usedPlotSheet = plotSheet;
             double barThickness = mBarThickness;
-            if((mChartType == Stats.ChartType.HOURLY_BREAKDOWN || mChartType == Stats.ChartType.WEEKLY_BREAKDOWN)){
-                barThickness = 0.8;
-                if(i == 2) {
-                    usedPlotSheet = hiddenPlotSheet;
-                    barThickness = 0.2;
-                }
+            switch (mChartType){
+                case HOURLY_BREAKDOWN:
+                case WEEKLY_BREAKDOWN:
+                    barThickness = 0.8;
+                    if(i == 2) {
+                        usedPlotSheet = hiddenPlotSheet;
+                        barThickness = 0.2;
+                    }
+                    break;
+                case CARDS_REVIEW_COUNT:
+                case CARDS_RELEARN_COUNT:
+                    barThickness = 0.9;
+
             }
             ColorWrap color;
             switch (mChartType){

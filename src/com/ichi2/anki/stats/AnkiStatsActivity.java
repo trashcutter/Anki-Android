@@ -47,6 +47,10 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
     public static final int WEEKLY_BREAKDOWN_TAB_POSITION = 6;
     public static final int ANSWER_BUTTONS_TAB_POSITION = 7;
     public static final int CARDS_TYPES_TAB_POSITION = 8;
+    public static final int CARDS_REVIEW_COUNT_TAB_POSITION = 9;
+    public static final int CARDS_RELEARN_COUNT_TAB_POSITION = 10;
+
+    private final int NUMBER_OF_TABS = 11;
 
     private Menu mMenu;
     private SectionsPagerAdapter mSectionsPagerAdapter;
@@ -81,7 +85,7 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
-        mViewPager.setOffscreenPageLimit(8);
+        mViewPager.setOffscreenPageLimit(NUMBER_OF_TABS);
         AnkiStatsTaskHandler.createFirstStatisticChooserTask(mViewPager);
 
         // When swiping between different sections, select the corresponding
@@ -311,7 +315,7 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
 
         @Override
         public int getCount() {
-            return 9;
+            return NUMBER_OF_TABS;
         }
 
         @Override
@@ -337,6 +341,10 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
                     return getString(R.string.stats_answer_buttons).toUpperCase(l);
                 case CARDS_TYPES_TAB_POSITION:
                     return getString(R.string.stats_cards_types).toUpperCase(l);
+                case CARDS_REVIEW_COUNT_TAB_POSITION:
+                    return getString(R.string.stats_cards_review_count_histogram).toUpperCase(l);
+                case CARDS_RELEARN_COUNT_TAB_POSITION:
+                    return getString(R.string.stats_cards_relearn_count_histogram).toUpperCase(l);
             }
             return null;
         }
@@ -375,6 +383,8 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
                 case WEEKLY_BREAKDOWN_TAB_POSITION:
                 case ANSWER_BUTTONS_TAB_POSITION:
                 case CARDS_TYPES_TAB_POSITION:
+                case CARDS_REVIEW_COUNT_TAB_POSITION:
+                case CARDS_RELEARN_COUNT_TAB_POSITION:
                     fragment = new ChartFragment();
                     args = new Bundle();
                     args.putInt(ARG_SECTION_NUMBER, sectionNumber);
@@ -516,6 +526,14 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
                 case CARDS_TYPES_TAB_POSITION:
                     mCreateChartTask = (((AnkiStatsActivity)getActivity()).getTaskHandler()).createChart(
                             Stats.ChartType.CARDS_TYPES, mChart, mProgressBar);
+                    break;
+                case CARDS_REVIEW_COUNT_TAB_POSITION:
+                    mCreateChartTask = (((AnkiStatsActivity)getActivity()).getTaskHandler()).createChart(
+                            Stats.ChartType.CARDS_REVIEW_COUNT, mChart, mProgressBar);
+                    break;
+                case CARDS_RELEARN_COUNT_TAB_POSITION:
+                    mCreateChartTask = (((AnkiStatsActivity)getActivity()).getTaskHandler()).createChart(
+                            Stats.ChartType.CARDS_RELEARN_COUNT, mChart, mProgressBar);
                     break;
 
             }
