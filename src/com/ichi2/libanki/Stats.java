@@ -26,7 +26,6 @@ import com.ichi2.anki.R;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -39,19 +38,9 @@ public class Stats {
     public static final int TYPE_LIFE = 2;
 
     public static enum ChartType {FORECAST, REVIEW_COUNT, REVIEW_TIME,
-        INTERVALS, HOURLY_BREAKDOWN, WEEKLY_BREAKDOWN, ANSWER_BUTTONS, CARDS_TYPES, OTHER};
-    public static final int TYPE_FORECAST = 0;
-    public static final int TYPE_REVIEW_COUNT = 1;
-    public static final int TYPE_REVIEW_TIME = 2;
-    public static final int TYPE_INTERVALS = 3;
-    public static final int TYPE_HOURLY_BREAKDOWN = 4;
-    public static final int TYPE_WEEKLY_BREAKDOWN = 5;
-    public static final int TYPE_ANSWER_BUTTONS = 6;
-    public static final int TYPE_CARDS_TYPES = 7;
+            INTERVALS, HOURLY_BREAKDOWN, WEEKLY_BREAKDOWN, ANSWER_BUTTONS,
+        CARDS_TYPES, CARDS_REVIEW_COUNT, CARDS_RELEARN_COUNT, OTHER};
 
-    //public static final int TYPE_REVIEWS = 4;
-    //public static final int TYPE_REVIEWING_TIME = 5;
-    // public static final int TYPE_DECK_SUMMARY = 5;
 
     private static Stats sCurrentInstance;
 
@@ -1121,6 +1110,279 @@ public class Stats {
         mMaxElements = 10;      //bars are positioned from 1 to 14
         if(mMaxCards == 0)
             mMaxCards = 10;
+        return list.size() > 0;
+    }
+
+    /**
+     * cards review count histogram
+     * ***********************************************************************************************
+     */
+    public boolean calculateCardsReviewCountHistogram(int type) {
+        mHasColoredCumulative = false;
+        mDynamicAxis = false;
+        mType = type;
+        mBackwards = false;
+
+        mTitle = R.string.stats_cards_review_count_histogram;
+        mAxisTitles = new int[] { R.string.stats_number_of_reviews, R.string.stats_number_of_cards, R.string.stats_cumulative_cards};
+
+        mValueLabels = new int[] { R.string.statistics_review_count };
+        mColors = new int[] { R.color.stats_learn};
+        int num = 0;
+        int chunk = 0;
+        switch (type) {
+            case TYPE_MONTH:
+                num = 31;
+                chunk = 1;
+                break;
+            case TYPE_YEAR:
+                num = 52;
+                chunk = 7;
+                break;
+            case TYPE_LIFE:
+                num = -1;
+                chunk = 30;
+                break;
+        }
+        ArrayList<String> lims = new ArrayList<String>();
+        if (num != -1) {
+            lims.add("id > " + ((mCol.getSched().getDayCutoff() - ((num + 1) * chunk * 86400)) * 1000));
+        }
+        String lim = _revlogLimit().replaceAll("[\\[\\]]", "");
+        if (lim.length() > 0) {
+            lims.add(lim);
+        }
+        if (lims.size() > 0) {
+            lim = "WHERE ";
+            while (lims.size() > 1) {
+                lim += lims.remove(0) + " AND ";
+            }
+            lim += lims.remove(0) + " AND ivl > 0";  //only pure reviews
+        } else {
+            lim = "WHERE ivl > 0"; //only pure reviews
+        }
+
+        ArrayList<int[]> list = new ArrayList<int[]>();
+        Cursor cur = null;
+        String query = "SELECT cnt, count(cnt) " +
+                "from (select count() as cnt from revlog " + lim + " group by cid) " +
+                "group by cnt " +
+                "order by cnt";
+
+        Log.d(AnkiDroidApp.TAG, "ReviewCount query: " + query);
+
+        try {
+            cur = mCol
+                    .getDb()
+                    .getDatabase()
+                    .rawQuery(
+                            query, null);
+            while (cur.moveToNext()) {
+                list.add(new int[] { cur.getInt(0), cur.getInt(1)});
+            }
+        } finally {
+            if (cur != null && !cur.isClosed()) {
+                cur.close();
+            }
+        }
+
+        //add something in list so not to crash the following code
+        if(list.size() == 0){
+            list.add(new int[] { 0, 0});
+        }
+
+        mSeriesList = new double[2][list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            int[] data = list.get(i);
+            mSeriesList[0][i] = data[0]; // day
+            mSeriesList[1][i] = data[1];
+            if(mSeriesList[1][i] > mMaxCards)
+                mMaxCards = data[1];
+
+            if(data[0] > mLastElement)
+                mLastElement = data[0];
+            if(data[0] < mFirstElement)
+                mFirstElement = data[0];
+            if(data[0] == 0){
+                mZeroIndex = i;
+            }
+        }
+        mMaxElements = list.size()-1;
+
+        mCumulative = new double[2][];
+        mCumulative[0] = mSeriesList[0];
+        for(int i= 1; i<mSeriesList.length; i++){
+            mCumulative[i] = createCumulative(mSeriesList[i]);
+            if(i>1){
+                for(int j = 0; j< mCumulative[i-1].length; j++){
+                    mCumulative[i-1][j] -= mCumulative[i][j];
+                }
+            }
+        }
+
+        mMcount = 0;
+        // we could assume the last element to be the largest,
+        // but on some collections that may not be true due some negative values
+        //so we search for the largest element:
+        for(int i = 1; i < mCumulative.length; i++){
+            for(int j = 0; j< mCumulative[i].length; j++){
+                if(mMcount < mCumulative[i][j])
+                    mMcount = mCumulative[i][j];
+            }
+        }
+
+        //some adjustments to not crash the chartbuilding with emtpy data
+
+        if(mMaxCards == 0)
+            mMaxCards = 10;
+
+        if(mMaxElements == 0){
+            mMaxElements = 10;
+        }
+        if(mMcount == 0){
+            mMcount = 10;
+        }
+        if(mFirstElement == mLastElement){
+            mFirstElement = 0;
+            mLastElement = 10;
+        }
+        return list.size() > 0;
+    }
+
+    /**
+     * cards review count histogram
+     * ***********************************************************************************************
+     */
+    public boolean calculateCardsRelearnCountHistogram(int type) {
+        mHasColoredCumulative = false;
+        mDynamicAxis = false;
+        mType = type;
+        mBackwards = false;
+
+        mTitle = R.string.stats_cards_review_count_histogram;
+        mAxisTitles = new int[] { R.string.stats_number_of_reviews, R.string.stats_number_of_cards, R.string.stats_cumulative_cards};
+
+        mValueLabels = new int[] { R.string.statistics_relearn_count };
+        mColors = new int[] { R.color.stats_relearn};
+        int num = 0;
+        int chunk = 0;
+        switch (type) {
+            case TYPE_MONTH:
+                num = 31;
+                chunk = 1;
+                break;
+            case TYPE_YEAR:
+                num = 52;
+                chunk = 7;
+                break;
+            case TYPE_LIFE:
+                num = -1;
+                chunk = 30;
+                break;
+        }
+        ArrayList<String> lims = new ArrayList<String>();
+        if (num != -1) {
+            lims.add("id > " + ((mCol.getSched().getDayCutoff() - ((num + 1) * chunk * 86400)) * 1000));
+        }
+        String lim = _revlogLimit().replaceAll("[\\[\\]]", "");
+        if (lim.length() > 0) {
+            lims.add(lim);
+        }
+        if (lims.size() > 0) {
+            lim = "WHERE ";
+            while (lims.size() > 1) {
+                lim += lims.remove(0) + " AND ";
+            }
+            lim += lims.remove(0) + " AND ivl > 0";  //only count failing once
+        } else {
+            lim = "WHERE ivl > 0"; //only count failing once
+        }
+
+        ArrayList<int[]> list = new ArrayList<int[]>();
+        Cursor cur = null;
+        String query = "SELECT cnt, count(cnt) " +
+                "from (select sum(CASE WHEN type = 2 THEN 1 ELSE 0 END) as cnt from revlog " + lim + " group by cid) " +
+                "where cnt > 0 " +
+                "group by cnt " +
+                "order by cnt";
+
+        Log.d(AnkiDroidApp.TAG, "ReviewCount query: " + query);
+
+        try {
+            cur = mCol
+                    .getDb()
+                    .getDatabase()
+                    .rawQuery(
+                            query, null);
+            while (cur.moveToNext()) {
+                list.add(new int[] { cur.getInt(0), cur.getInt(1)});
+            }
+        } finally {
+            if (cur != null && !cur.isClosed()) {
+                cur.close();
+            }
+        }
+
+        //add something in list so not to crash the following code
+        if(list.size() == 0){
+            list.add(new int[] { 0, 0});
+        }
+
+        mSeriesList = new double[2][list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            int[] data = list.get(i);
+            mSeriesList[0][i] = data[0]; // day
+            mSeriesList[1][i] = data[1];
+            if(mSeriesList[1][i] > mMaxCards)
+                mMaxCards = data[1];
+
+            if(data[0] > mLastElement)
+                mLastElement = data[0];
+            if(data[0] < mFirstElement)
+                mFirstElement = data[0];
+            if(data[0] == 0){
+                mZeroIndex = i;
+            }
+        }
+        mMaxElements = list.size()-1;
+
+        mCumulative = new double[2][];
+        mCumulative[0] = mSeriesList[0];
+        for(int i= 1; i<mSeriesList.length; i++){
+            mCumulative[i] = createCumulative(mSeriesList[i]);
+            if(i>1){
+                for(int j = 0; j< mCumulative[i-1].length; j++){
+                    mCumulative[i-1][j] -= mCumulative[i][j];
+                }
+            }
+        }
+
+        mMcount = 0;
+        // we could assume the last element to be the largest,
+        // but on some collections that may not be true due some negative values
+        //so we search for the largest element:
+        for(int i = 1; i < mCumulative.length; i++){
+            for(int j = 0; j< mCumulative[i].length; j++){
+                if(mMcount < mCumulative[i][j])
+                    mMcount = mCumulative[i][j];
+            }
+        }
+
+        //some adjustments to not crash the chartbuilding with emtpy data
+
+        if(mMaxCards == 0)
+            mMaxCards = 10;
+
+        if(mMaxElements == 0){
+            mMaxElements = 10;
+        }
+        if(mMcount == 0){
+            mMcount = 10;
+        }
+        if(mFirstElement == mLastElement){
+            mFirstElement = 0;
+            mLastElement = 10;
+        }
         return list.size() > 0;
     }
 
