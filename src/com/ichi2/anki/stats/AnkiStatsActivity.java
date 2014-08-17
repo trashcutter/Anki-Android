@@ -49,8 +49,9 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
     public static final int CARDS_TYPES_TAB_POSITION = 8;
     public static final int CARDS_REVIEW_COUNT_TAB_POSITION = 9;
     public static final int CARDS_RELEARN_COUNT_TAB_POSITION = 10;
+    public static final int CARDS_EASE_TAB_POSITION = 11;
 
-    private final int NUMBER_OF_TABS = 11;
+    private final int NUMBER_OF_TABS = 12;
 
     private Menu mMenu;
     private SectionsPagerAdapter mSectionsPagerAdapter;
@@ -345,6 +346,8 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
                     return getString(R.string.stats_cards_review_count_histogram).toUpperCase(l);
                 case CARDS_RELEARN_COUNT_TAB_POSITION:
                     return getString(R.string.stats_cards_relearn_count_histogram).toUpperCase(l);
+                case CARDS_EASE_TAB_POSITION:
+                    return getString(R.string.stats_cards_ease_histogram).toUpperCase(l);
             }
             return null;
         }
@@ -385,6 +388,7 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
                 case CARDS_TYPES_TAB_POSITION:
                 case CARDS_REVIEW_COUNT_TAB_POSITION:
                 case CARDS_RELEARN_COUNT_TAB_POSITION:
+                case CARDS_EASE_TAB_POSITION:
                     fragment = new ChartFragment();
                     args = new Bundle();
                     args.putInt(ARG_SECTION_NUMBER, sectionNumber);
@@ -534,6 +538,10 @@ public class AnkiStatsActivity extends NavigationDrawerActivity implements Actio
                 case CARDS_RELEARN_COUNT_TAB_POSITION:
                     mCreateChartTask = (((AnkiStatsActivity)getActivity()).getTaskHandler()).createChart(
                             Stats.ChartType.CARDS_RELEARN_COUNT, mChart, mProgressBar);
+                    break;
+                case CARDS_EASE_TAB_POSITION:
+                    mCreateChartTask = (((AnkiStatsActivity)getActivity()).getTaskHandler()).createChart(
+                            Stats.ChartType.CARDS_EASE, mChart, mProgressBar);
                     break;
 
             }
