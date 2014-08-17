@@ -39,7 +39,7 @@ public class Stats {
 
     public static enum ChartType {FORECAST, REVIEW_COUNT, REVIEW_TIME,
             INTERVALS, HOURLY_BREAKDOWN, WEEKLY_BREAKDOWN, ANSWER_BUTTONS,
-        CARDS_TYPES, CARDS_REVIEW_COUNT, CARDS_RELEARN_COUNT, OTHER};
+        CARDS_TYPES, CARDS_REVIEW_COUNT, CARDS_RELEARN_COUNT, CARDS_EASE, OTHER};
 
 
     private static Stats sCurrentInstance;
@@ -1328,6 +1328,110 @@ public class Stats {
             list.add(new int[] { 0, 0});
         }
 
+        mSeriesList = new double[2][list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            int[] data = list.get(i);
+            mSeriesList[0][i] = data[0]; // day
+            mSeriesList[1][i] = data[1];
+            if(mSeriesList[1][i] > mMaxCards)
+                mMaxCards = data[1];
+
+            if(data[0] > mLastElement)
+                mLastElement = data[0];
+            if(data[0] < mFirstElement)
+                mFirstElement = data[0];
+            if(data[0] == 0){
+                mZeroIndex = i;
+            }
+        }
+        mMaxElements = list.size()-1;
+
+        mCumulative = new double[2][];
+        mCumulative[0] = mSeriesList[0];
+        for(int i= 1; i<mSeriesList.length; i++){
+            mCumulative[i] = createCumulative(mSeriesList[i]);
+            if(i>1){
+                for(int j = 0; j< mCumulative[i-1].length; j++){
+                    mCumulative[i-1][j] -= mCumulative[i][j];
+                }
+            }
+        }
+
+        mMcount = 0;
+        // we could assume the last element to be the largest,
+        // but on some collections that may not be true due some negative values
+        //so we search for the largest element:
+        for(int i = 1; i < mCumulative.length; i++){
+            for(int j = 0; j< mCumulative[i].length; j++){
+                if(mMcount < mCumulative[i][j])
+                    mMcount = mCumulative[i][j];
+            }
+        }
+
+        //some adjustments to not crash the chartbuilding with emtpy data
+
+        if(mMaxCards == 0)
+            mMaxCards = 10;
+
+        if(mMaxElements == 0){
+            mMaxElements = 10;
+        }
+        if(mMcount == 0){
+            mMcount = 10;
+        }
+        if(mFirstElement == mLastElement){
+            mFirstElement = 0;
+            mLastElement = 10;
+        }
+        return list.size() > 0;
+    }
+
+    /**
+     * cards ease histogram
+     * ***********************************************************************************************
+     */
+    public boolean calculateCardsEaseHistogram(int type) {
+        mHasColoredCumulative = false;
+        mDynamicAxis = false;
+        mType = type;
+        mBackwards = false;
+
+        mTitle = R.string.stats_cards_ease_histogram;
+        mAxisTitles = new int[] { R.string.stats_ease, R.string.stats_number_of_cards, R.string.stats_cumulative_cards};
+
+        mValueLabels = new int[] { R.string.statistics_ease };
+        mColors = new int[] { R.color.stats_cram};
+
+
+
+        ArrayList<int[]> list = new ArrayList<int[]>();
+        Cursor cur = null;
+        String query = "select factor/10, count() from cards where did in " + _limit() + " AND factor > 0 " +
+                "group by factor";
+
+        Log.d(AnkiDroidApp.TAG, "Ease query: " + query);
+
+        try {
+            cur = mCol
+                    .getDb()
+                    .getDatabase()
+                    .rawQuery(
+                            query, null);
+            while (cur.moveToNext()) {
+                list.add(new int[] { cur.getInt(0), cur.getInt(1)});
+            }
+        } finally {
+            if (cur != null && !cur.isClosed()) {
+                cur.close();
+            }
+        }
+
+        //add something in list so not to crash the following code
+        if(list.size() == 0){
+            list.add(new int[] { 0, 0});
+        }
+
+        mFirstElement = Integer.MAX_VALUE;
         mSeriesList = new double[2][list.size()];
         for (int i = 0; i < list.size(); i++) {
             int[] data = list.get(i);

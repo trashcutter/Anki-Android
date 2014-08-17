@@ -95,6 +95,9 @@ public class ChartBuilder {
             case CARDS_RELEARN_COUNT:
                 stats.calculateCardsRelearnCountHistogram(mType);
                 break;
+            case CARDS_EASE:
+                stats.calculateCardsEaseHistogram(mType);
+                break;
         }
         mCumulative = stats.getCumulative();
         mSeriesList = stats.getSeriesList();
@@ -205,6 +208,9 @@ public class ChartBuilder {
             PlotSheet usedPlotSheet = plotSheet;
             double barThickness = mBarThickness;
             switch (mChartType){
+                case CARDS_EASE:
+                    barThickness = 4.5;
+                    break;
                 case HOURLY_BREAKDOWN:
                 case WEEKLY_BREAKDOWN:
                     barThickness = 0.8;
