@@ -152,6 +152,11 @@
                 android:summary="@string/show_progress_summ"
                 android:title="@string/show_progress" />
         </PreferenceCategory>
+        <CheckBoxPreference
+            android:title="Kanji Info"
+            android:summary="Display kanji info after answering card"
+            android:defaultValue="false"
+            android:key="displayKanjiInfo"/>
         <PreferenceCategory android:title="@string/pref_cat_whiteboard" >
             <com.hlidskialf.android.preference.SeekBarPreference
                 android:defaultValue="6"
