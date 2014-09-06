@@ -2065,8 +2065,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
         String line;
 
         try {
-            while (reader.ready()) {
-                line = reader.readLine();
+            while ((line = reader.readLine()) != null) {
                 if (line.length() == 0 || line.startsWith("#")) {
                     continue;
                 }
